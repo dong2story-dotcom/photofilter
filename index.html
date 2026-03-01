@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>FUJI SIM</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg:      #0a0a0a;
+  --surface: rgba(16,16,16,0.92);
+  --border:  rgba(255,255,255,0.10);
+  --text:    #d8d4cc;
+  --muted:   #5a5a58;
+  --gray:    #888884;
+  --strip-h: 116px;
+  --topbar-h: 52px;
+  --adj-h:   218px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:'DM Mono',monospace; color:var(--text); }
+
+/* ── TOP BAR ── */
+#topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  z-index: 80;
+  background: linear-gradient(to bottom, rgba(10,10,10,0.95), transparent);
+}
+
+#btnOpen {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--gray);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+#btnOpen:hover { border-color: var(--gray); color: var(--text); }
+
+#btnSave {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--gray);
+  font-family: 'DM Mono', monospace;
+  font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+  padding: 7px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+#btnSave:hover { border-color: var(--gray); color: var(--text); }
+
+#hudCode {
+  font-size: 10px; letter-spacing: 2.5px;
+  color: var(--gray);
+  min-width: 60px;
+  text-align: right;
+}
+
+/* ── STAGE ── */
+#stage {
+  position: fixed;
+  top: var(--topbar-h);
+  left: 0; right: 0;
+  bottom: var(--strip-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  transition: bottom 0.38s cubic-bezier(0.32,0.72,0,1);
+  overflow: hidden;
+}
+body.adj-open #stage {
+  bottom: calc(var(--strip-h) + var(--adj-h));
+}
+
+/* Canvas: always centered, fills stage nicely */
+#previewCanvas {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  display: none;
+  cursor: pointer;
+  user-select: none;
+  object-fit: contain;
+}
+
+/* Upload prompt */
+#uploadPrompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  opacity: 0.45;
+  transition: opacity 0.2s;
+  user-select: none;
+}
+#uploadPrompt:hover { opacity: 0.7; }
+.up-ring {
+  width: 60px; height: 60px;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; color: var(--muted);
+}
+.up-text { font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); }
+
+/* Original toast */
+#origToast {
+  position: fixed;
+  top: 60px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.65);
+  border: 1px solid rgba(200,200,200,0.18);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--gray);
+  z-index: 90; pointer-events: none;
+  opacity: 0; transition: opacity 0.2s;
+}
+#origToast.show { opacity: 1; }
+
+/* ── BOTTOM UI ── */
+#bottomUI {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── ADJUST PANEL ── */
+#adjPanel {
+  height: 0;
+  overflow: hidden;
+  transition: height 0.38s cubic-bezier(0.32,0.72,0,1);
+  /* semi-transparent backdrop */
+  background: rgba(10,10,10,0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(200,200,200,0.08);
+}
+body.adj-open #adjPanel { height: var(--adj-h); }
+
+.adj-scroll {
+  height: var(--adj-h);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 20px 18px;
+  scrollbar-width: none;
+}
+.adj-scroll::-webkit-scrollbar { display: none; }
+
+.adj-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 28px;
+}
+
+.slider-row { display: flex; flex-direction: column; gap: 6px; }
+.slider-label {
+  display: flex; justify-content: space-between;
+  font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+}
+.sl-name { color: var(--muted); }
+.sl-val  { color: var(--gray); min-width: 24px; text-align: right; }
+
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 2px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 1px; outline: none; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--gray);
+  box-shadow: 0 0 5px rgba(0,0,0,0.8);
+  cursor: pointer; transition: transform 0.1s;
+}
+input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.3); }
+input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%; border: none;
+  background: var(--gray); cursor: pointer;
+}
+
+.adj-reset-row {
+  grid-column: 1 / -1;
+  display: flex; justify-content: center; padding-top: 4px;
+}
+.btn-reset {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+  padding: 6px 18px; border-radius: 20px; cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-reset:hover { border-color: var(--gray); color: var(--gray); }
+
+/* ── FILTER STRIP ── */
+#filterStrip {
+  flex-shrink: 0;
+  height: var(--strip-h);
+  background: linear-gradient(to top, rgba(8,8,8,1) 55%, rgba(8,8,8,0.88));
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0 10px;
+}
+
+.strip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px 6px;
+  flex-shrink: 0;
+}
+.strip-title {
+  font-size: 8px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted);
+}
+#btnAdjToggle {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 12px; cursor: pointer;
+  transition: all 0.15s;
+}
+body.adj-open #btnAdjToggle { border-color: var(--gray); color: var(--gray); }
+.adj-arrow { font-size:10px; display:inline-block; transition: transform 0.35s; }
+body.adj-open .adj-arrow { transform: rotate(180deg); }
+
+/* Scrollable chip row */
+#filterScroll {
+  display: flex;
+  gap: 10px;
+  padding: 0 18px;
+  overflow-x: auto; overflow-y: hidden;
+  flex: 1; align-items: center;
+  scrollbar-width: none;
+}
+#filterScroll::-webkit-scrollbar { display: none; }
+
+.chip {
+  flex-shrink: 0;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 5px;
+  cursor: pointer; user-select: none;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.35s, transform 0.35s, border-color 0.15s;
+}
+.chip.visible { opacity: 1; transform: translateY(0); }
+
+.chip-thumb {
+  width: 54px; height: 40px;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.15s;
+  background: #1a1a1a; /* fallback */
+  position: relative;
+}
+/* actual thumbnail canvas inside */
+.chip-thumb canvas {
+  width: 100%; height: 100%;
+  display: block;
+  object-fit: cover;
+}
+.chip.active .chip-thumb {
+  border-color: var(--gray);
+  transform: scale(1.08);
+}
+.chip-code {
+  font-size: 9px; letter-spacing: 1px; color: var(--muted);
+  transition: color 0.15s;
+}
+.chip.active .chip-code { color: var(--text); }
+
+#fileInput { display: none; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div id="topbar">
+  <button id="btnOpen">‹</button>
+  <button id="btnSave">저장</button>
+  <div id="hudCode">F1</div>
+</div>
+
+<!-- Stage -->
+<div id="stage">
+  <div id="uploadPrompt">
+    <div class="up-ring">+</div>
+    <div class="up-text">사진을 클릭하거나 드래그</div>
+  </div>
+  <canvas id="previewCanvas"></canvas>
+</div>
+
+<div id="origToast">ORIGINAL</div>
+
+<!-- Bottom UI -->
+<div id="bottomUI">
+
+  <!-- Adjust panel -->
+  <div id="adjPanel">
+    <div class="adj-scroll">
+      <div class="adj-grid">
+        <div class="slider-row">
+          <div class="slider-label"><span class="sl-name">노출</span><span class="sl-val" id="vExp">0</span></div>
+          <input type="range" id="sExp" min="-50" max="50" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span class="sl-name">채도</span><span class="sl-val" id="vSat">0</span></div>
+          <input type="range" id="sSat" min="-100" max="100" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span class="sl-name">대비</span><span class="sl-val" id="vCon">0</span></div>
+          <input type="range" id="sCon" min="-50" max="50" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span class="sl-name">하이라이트</span><span class="sl-val" id="vHi">0</span></div>
+          <input type="range" id="sHi" min="-50" max="50" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span class="sl-name">섀도우</span><span class="sl-val" id="vSh">0</span></div>
+          <input type="range" id="sSh" min="-50" max="50" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span class="sl-name">따뜻함</span><span class="sl-val" id="vWarm">0</span></div>
+          <input type="range" id="sWarm" min="-50" max="50" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span class="sl-name">그레인</span><span class="sl-val" id="vGrain">0</span></div>
+          <input type="range" id="sGrain" min="0" max="60" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span class="sl-name">비네팅</span><span class="sl-val" id="vVig">0</span></div>
+          <input type="range" id="sVig" min="0" max="100" value="0">
+        </div>
+        <div class="adj-reset-row">
+          <button class="btn-reset" id="btnReset">초기화</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter strip -->
+  <div id="filterStrip">
+    <div class="strip-header">
+      <span class="strip-title">사진 필터</span>
+      <button id="btnAdjToggle">보정 <span class="adj-arrow">↑</span></button>
+    </div>
+    <div id="filterScroll"></div>
+  </div>
+
+</div>
+
+<input type="file" id="fileInput" accept="image/*">
+
+<script>
+// ── Film data ──
+const FILMS = [
+  { id:'normal',         code:'Normal',     css:{contrast:1.00, saturate:1.00}, grain:0,  vignette:0  },
+  { id:'provia',         code:'F1',         css:{contrast:1.05, saturate:1.10}, grain:4,  vignette:10 },
+  { id:'velvia',         code:'F2',         css:{contrast:1.20, saturate:1.60}, grain:3,  vignette:20, overlay:{color:'#001830',opacity:.06,blend:'multiply'} },
+  { id:'classic_chrome', code:'F3',         css:{contrast:1.12, saturate:0.75}, grain:10, vignette:25, overlay:{color:'#3a2a1a',opacity:.12,blend:'multiply'} },
+  { id:'classic_neg',    code:'F4',         css:{contrast:1.08, saturate:0.90}, grain:12, vignette:30, overlay:{color:'#2a1a08',opacity:.15,blend:'multiply'} },
+  { id:'eterna',         code:'Cinematic1', css:{contrast:0.92, saturate:0.85}, grain:8,  vignette:35, overlay:{color:'#0a0a1a',opacity:.10,blend:'multiply'} },
+  { id:'eterna_bleach',  code:'F5',         css:{contrast:1.30, saturate:0.45}, grain:15, vignette:40, overlay:{color:'#101010',opacity:.12,blend:'multiply'} },
+  { id:'acros',          code:'FBW1',       css:{contrast:1.15, saturate:0.00}, grain:8,  vignette:30 },
+  { id:'acros_r',        code:'FBW2',       css:{contrast:1.25, saturate:0.00}, grain:8,  vignette:30 },
+  { id:'pro400h',        code:'F6',         css:{contrast:0.95, saturate:0.90}, grain:7,  vignette:15, overlay:{color:'#e8d8c0',opacity:.08,blend:'screen'} },
+  { id:'nostalgic_neg',  code:'F7',         css:{contrast:1.00, saturate:0.85}, grain:14, vignette:28, overlay:{color:'#c87820',opacity:.10,blend:'multiply'} },
+];
+
+let currentFilm = FILMS[0];
+let sourceImage  = null;
+let showOrig     = false;
+let origTimer    = null;
+let adj = { exp:0, sat:0, con:0, hi:0, sh:0, warm:0, grain:0, vig:0 };
+
+// ── Core pixel-level film render (reusable for thumbnails too) ──
+function applyFilm(srcCanvas, film, adjOverride) {
+  const a = adjOverride || { exp:0, sat:0, con:0, hi:0, sh:0, warm:0, grain:0, vig:0 };
+  const w = srcCanvas.width, h = srcCanvas.height;
+  const ctx2 = srcCanvas.getContext('2d');
+
+  const id = ctx2.getImageData(0,0,w,h);
+  const d  = id.data;
+
+  const expF    = 1 + a.exp  / 100;
+  const satMult = (film.css.saturate ?? 1) + a.sat / 100;
+  const conMult = (film.css.contrast ?? 1) + a.con / 100;
+  const hiAdj   = a.hi   / 200;
+  const shAdj   = a.sh   / 200;
+  const warmR   = a.warm > 0 ?  a.warm / 300 : 0;
+  const warmB   = a.warm < 0 ? -a.warm / 300 : 0;
+
+  for (let i = 0; i < d.length; i += 4) {
+    let r = d[i]/255, g = d[i+1]/255, b = d[i+2]/255;
+
+    switch (film.id) {
+      case 'velvia':        r=Math.pow(r,.85); g=Math.pow(g,.88); b=Math.pow(b,1.1); break;
+      case 'classic_chrome':{ const l=.299*r+.587*g+.114*b; r+=.04*(1-l); g+=.02*(1-l); b+=.03*l; break; }
+      case 'classic_neg':   { const l=.299*r+.587*g+.114*b; r+=.06*(1-l); g+=.02*(1-l); break; }
+      case 'eterna':        r=r*.85+.05; g=g*.85+.05; b=b*.85+.05; break;
+      case 'eterna_bleach': { const l=.299*r+.587*g+.114*b; r=r*.4+l*.6; g=g*.4+l*.6; b=b*.4+l*.6; break; }
+      case 'acros':         { const l=Math.pow(.299*r+.587*g+.114*b,.92); r=l;g=l;b=l; break; }
+      case 'acros_r':       { const l=Math.pow(.55*r+.30*g+.15*b,.9);    r=l;g=l;b=l; break; }
+      case 'pro400h':       r=Math.pow(r,.95)*.95+.04; g=Math.pow(g,.95)*.96+.03; b=Math.pow(b,.92)*.92+.05; break;
+      case 'nostalgic_neg': { const l=.299*r+.587*g+.114*b; r+=.08*l; b=b-.04*l+.04*(1-l); break; }
+    }
+
+    r*=expF; g*=expF; b*=expF;
+
+    const lum=.299*r+.587*g+.114*b;
+    if (hiAdj!==0){ const hi=Math.max(0,lum-.5)*2; r+=hiAdj*hi; g+=hiAdj*hi; b+=hiAdj*hi; }
+    if (shAdj!==0){ const sh=Math.max(0,.5-lum)*2; r+=shAdj*sh; g+=shAdj*sh; b+=shAdj*sh; }
+    r+=warmR; b+=warmB;
+
+    if (satMult!==1){ const l=.299*r+.587*g+.114*b; r=l+(r-l)*satMult; g=l+(g-l)*satMult; b=l+(b-l)*satMult; }
+    r=(r-.5)*conMult+.5; g=(g-.5)*conMult+.5; b=(b-.5)*conMult+.5;
+
+    d[i]  =Math.max(0,Math.min(255,r*255));
+    d[i+1]=Math.max(0,Math.min(255,g*255));
+    d[i+2]=Math.max(0,Math.min(255,b*255));
+  }
+  ctx2.putImageData(id,0,0);
+
+  if (film.overlay){
+    ctx2.globalCompositeOperation=film.overlay.blend;
+    ctx2.globalAlpha=film.overlay.opacity;
+    ctx2.fillStyle=film.overlay.color;
+    ctx2.fillRect(0,0,w,h);
+    ctx2.globalCompositeOperation='source-over';
+    ctx2.globalAlpha=1;
+  }
+
+  const vigAmt=(film.vignette||0)+a.vig;
+  if (vigAmt>0){
+    const vg=ctx2.createRadialGradient(w/2,h/2,Math.min(w,h)*.3,w/2,h/2,Math.max(w,h)*.8);
+    vg.addColorStop(0,'rgba(0,0,0,0)');
+    vg.addColorStop(1,`rgba(0,0,0,${vigAmt/200})`);
+    ctx2.fillStyle=vg; ctx2.fillRect(0,0,w,h);
+  }
+
+  const grainAmt=(film.grain||0)+a.grain;
+  if (grainAmt>0){
+    const gid=ctx2.getImageData(0,0,w,h), gd=gid.data;
+    for (let i=0;i<gd.length;i+=4){
+      const n=(Math.random()-.5)*grainAmt*2;
+      gd[i]  =Math.max(0,Math.min(255,gd[i]+n));
+      gd[i+1]=Math.max(0,Math.min(255,gd[i+1]+n));
+      gd[i+2]=Math.max(0,Math.min(255,gd[i+2]+n));
+    }
+    ctx2.putImageData(gid,0,0);
+  }
+}
+
+// ── Build filter chips (empty at first) ──
+const filterScroll = document.getElementById('filterScroll');
+const chipEls = [];
+
+FILMS.forEach((film, i) => {
+  const chip = document.createElement('div');
+  chip.className = 'chip' + (i === 0 ? ' active' : '');
+
+  const thumbWrap = document.createElement('div');
+  thumbWrap.className = 'chip-thumb';
+
+  const thumbCanvas = document.createElement('canvas');
+  thumbWrap.appendChild(thumbCanvas);
+
+  const label = document.createElement('div');
+  label.className = 'chip-code';
+  label.textContent = film.code;
+
+  chip.appendChild(thumbWrap);
+  chip.appendChild(label);
+
+  chip.addEventListener('click', () => {
+    chipEls.forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    currentFilm = film;
+    document.getElementById('hudCode').textContent = film.code;
+    if (sourceImage) renderImage();
+    openAdj();
+  });
+
+  filterScroll.appendChild(chip);
+  chipEls.push(chip);
+  film._thumbCanvas = thumbCanvas;
+});
+
+// ── Generate thumbnails from loaded image ──
+function generateThumbnails() {
+  const img = sourceImage;
+  const TW = 108, TH = 80; // 2x for retina
+
+  FILMS.forEach((film, i) => {
+    const tc = film._thumbCanvas;
+    tc.width  = TW;
+    tc.height = TH;
+    const tctx = tc.getContext('2d');
+    // Draw source scaled to thumb
+    tctx.drawImage(img, 0, 0, TW, TH);
+    // Apply film
+    applyFilm(tc, film, { exp:0, sat:0, con:0, hi:0, sh:0, warm:0, grain:0, vig:0 });
+
+    // Animate chip in with stagger
+    setTimeout(() => {
+      chipEls[i].classList.add('visible');
+    }, i * 50);
+  });
+}
+
+// ── Adjust panel ──
+function openAdj()   { document.body.classList.add('adj-open'); }
+function closeAdj()  { document.body.classList.remove('adj-open'); }
+function toggleAdj() { document.body.classList.toggle('adj-open'); }
+
+document.getElementById('btnAdjToggle').addEventListener('click', toggleAdj);
+
+// ── Sliders ──
+const sliders = [
+  {el:'sExp',key:'exp',vEl:'vExp'},{el:'sSat',key:'sat',vEl:'vSat'},
+  {el:'sCon',key:'con',vEl:'vCon'},{el:'sHi', key:'hi', vEl:'vHi'},
+  {el:'sSh', key:'sh', vEl:'vSh'},{el:'sWarm',key:'warm',vEl:'vWarm'},
+  {el:'sGrain',key:'grain',vEl:'vGrain'},{el:'sVig',key:'vig',vEl:'vVig'},
+];
+sliders.forEach(({el,key,vEl}) => {
+  const input = document.getElementById(el);
+  const disp  = document.getElementById(vEl);
+  input.addEventListener('input', () => {
+    adj[key] = parseFloat(input.value);
+    disp.textContent = input.value;
+    if (sourceImage) renderImage();
+  });
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  sliders.forEach(({el,key,vEl}) => {
+    document.getElementById(el).value = 0;
+    document.getElementById(vEl).textContent = 0;
+    adj[key] = 0;
+  });
+  if (sourceImage) renderImage();
+});
+
+// ── Upload ──
+const uploadPrompt = document.getElementById('uploadPrompt');
+const canvas       = document.getElementById('previewCanvas');
+const ctx          = canvas.getContext('2d');
+const fileInput    = document.getElementById('fileInput');
+const btnOpen      = document.getElementById('btnOpen');
+const btnSave      = document.getElementById('btnSave');
+const btnAdjToggle = document.getElementById('btnAdjToggle');
+const stage        = document.getElementById('stage');
+
+btnOpen.addEventListener('click', () => fileInput.click());
+uploadPrompt.addEventListener('click', () => fileInput.click());
+stage.addEventListener('dragover', e => e.preventDefault());
+stage.addEventListener('drop', e => { e.preventDefault(); const f=e.dataTransfer.files[0]; if(f) loadImage(f); });
+fileInput.addEventListener('change', e => { if(e.target.files[0]) loadImage(e.target.files[0]); });
+
+function loadImage(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      sourceImage = img;
+      uploadPrompt.style.display = 'none';
+      canvas.style.display = 'block';
+      btnAdjToggle.style.display = 'flex';
+
+      // Reset to Normal filter
+      currentFilm = FILMS[0];
+      document.getElementById('hudCode').textContent = FILMS[0].code;
+      chipEls.forEach(c => c.classList.remove('active'));
+      chipEls[0].classList.add('active');
+
+      // Reset sliders
+      sliders.forEach(({el,key,vEl}) => {
+        document.getElementById(el).value = 0;
+        document.getElementById(vEl).textContent = 0;
+        adj[key] = 0;
+      });
+
+      // Reset chip visibility for re-animation
+      chipEls.forEach(c => c.classList.remove('visible'));
+
+      renderImage();
+      generateThumbnails();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Tap: show original ──
+const origToast = document.getElementById('origToast');
+canvas.addEventListener('click', () => {
+  if (!sourceImage || showOrig) return;
+  showOrig = true;
+  origToast.classList.add('show');
+  const img = sourceImage;
+  const maxW = 2400;
+  let w = img.width, h = img.height;
+  if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+  canvas.width = w; canvas.height = h;
+  ctx.drawImage(img, 0, 0, w, h);
+  if (origTimer) clearTimeout(origTimer);
+  origTimer = setTimeout(() => {
+    showOrig = false;
+    origToast.classList.remove('show');
+    renderImage();
+  }, 3000);
+});
+
+// ── Main render ──
+function renderImage() {
+  if (showOrig || !sourceImage) return;
+  const img = sourceImage;
+  const maxW = 2400;
+  let w = img.width, h = img.height;
+  if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+  canvas.width = w; canvas.height = h;
+  ctx.drawImage(img, 0, 0, w, h);
+  applyFilm(canvas, currentFilm, adj);
+}
+
+// ── Download ──
+btnSave.addEventListener('click', () => {
+  if (!sourceImage) return;
+  const a = document.createElement('a');
+  a.download = `fujisim_${currentFilm.code}.jpg`;
+  a.href = canvas.toDataURL('image/jpeg', .95);
+  a.click();
+});
+</script>
+</body>
+</html>
