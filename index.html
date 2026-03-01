@@ -8,15 +8,14 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap');
 
 :root {
-  --bg:      #0a0a0a;
-  --surface: rgba(16,16,16,0.92);
-  --border:  rgba(255,255,255,0.10);
-  --text:    #d8d4cc;
-  --muted:   #5a5a58;
-  --gray:    #888884;
-  --strip-h: 116px;
+  --bg:       #0a0a0a;
+  --border:   rgba(255,255,255,0.09);
+  --text:     #d8d4cc;
+  --muted:    #5a5a58;
+  --gray:     #888884;
   --topbar-h: 52px;
-  --adj-h:   218px;
+  --opt-h:    72px;   /* single-slider row height */
+  --strip-h:  116px;
 }
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -25,352 +24,250 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
 /* ── TOP BAR ── */
 #topbar {
   position: fixed;
-  top: 0; left: 0; right: 0;
-  height: var(--topbar-h);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 18px;
-  z-index: 80;
-  background: linear-gradient(to bottom, rgba(10,10,10,0.95), transparent);
+  top:0; left:0; right:0; height:var(--topbar-h);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px;
+  z-index:80;
+  background:linear-gradient(to bottom,rgba(10,10,10,0.96),transparent);
 }
-
 #btnOpen {
-  width: 36px; height: 36px;
-  display: flex; align-items: center; justify-content: center;
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  color: var(--gray);
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.15s;
+  width:36px; height:36px;
+  display:flex; align-items:center; justify-content:center;
+  background:none; border:1px solid var(--border); border-radius:50%;
+  color:var(--gray); font-size:18px; cursor:pointer; transition:all .15s;
 }
-#btnOpen:hover { border-color: var(--gray); color: var(--text); }
-
+#btnOpen:hover { border-color:var(--gray); color:var(--text); }
 #btnSave {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--gray);
-  font-family: 'DM Mono', monospace;
-  font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
-  padding: 7px 20px;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all 0.15s;
+  background:none; border:1px solid var(--border);
+  color:var(--gray); font-family:'DM Mono',monospace;
+  font-size:9px; letter-spacing:2px; text-transform:uppercase;
+  padding:7px 20px; border-radius:20px; cursor:pointer; transition:all .15s;
 }
-#btnSave:hover { border-color: var(--gray); color: var(--text); }
+#btnSave:hover { border-color:var(--gray); color:var(--text); }
+#hudCode { font-size:10px; letter-spacing:2.5px; color:var(--gray); min-width:60px; text-align:right; }
 
-#hudCode {
-  font-size: 10px; letter-spacing: 2.5px;
-  color: var(--gray);
-  min-width: 60px;
-  text-align: right;
-}
-
-/* ── STAGE ── */
+/* ── STAGE — always fills full screen, never shrinks ── */
 #stage {
-  position: fixed;
-  top: var(--topbar-h);
-  left: 0; right: 0;
-  bottom: var(--strip-h);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #000;
-  transition: bottom 0.38s cubic-bezier(0.32,0.72,0,1);
-  overflow: hidden;
-}
-body.adj-open #stage {
-  bottom: calc(var(--strip-h) + var(--adj-h));
+  position:fixed;
+  top:var(--topbar-h); left:0; right:0; bottom:0;
+  display:flex; align-items:center; justify-content:center;
+  background:#000;
+  overflow:hidden;
+  touch-action:none; /* we handle touch ourselves */
 }
 
-/* Canvas: always centered, fills stage nicely */
+/* Canvas wrapper — transforms applied here for pinch/zoom */
+#canvasWrap {
+  position:relative;
+  display:flex; align-items:center; justify-content:center;
+  width:100%; height:100%;
+  transform-origin:center center;
+}
+
 #previewCanvas {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  display: none;
-  cursor: pointer;
-  user-select: none;
-  object-fit: contain;
+  max-width:100%; max-height:100%;
+  width:auto; height:auto;
+  display:none;
+  user-select:none;
+  pointer-events:none;
 }
 
 /* Upload prompt */
 #uploadPrompt {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  cursor: pointer;
-  opacity: 0.45;
-  transition: opacity 0.2s;
-  user-select: none;
+  position:absolute;
+  display:flex; flex-direction:column; align-items:center; gap:14px;
+  cursor:pointer; opacity:.45; transition:opacity .2s; user-select:none;
 }
-#uploadPrompt:hover { opacity: 0.7; }
+#uploadPrompt:hover { opacity:.7; }
 .up-ring {
-  width: 60px; height: 60px;
-  border: 1px solid var(--muted);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px; color: var(--muted);
+  width:60px; height:60px; border:1px solid var(--muted); border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; color:var(--muted);
 }
 .up-text { font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); }
 
 /* Original toast */
 #origToast {
-  position: fixed;
-  top: 60px; left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.65);
-  border: 1px solid rgba(200,200,200,0.18);
-  border-radius: 20px;
-  padding: 5px 14px;
-  font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
-  color: var(--gray);
-  z-index: 90; pointer-events: none;
-  opacity: 0; transition: opacity 0.2s;
+  position:fixed; top:60px; left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,0.65); border:1px solid rgba(200,200,200,0.15);
+  border-radius:20px; padding:5px 14px;
+  font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--gray);
+  z-index:90; pointer-events:none; opacity:0; transition:opacity .2s;
 }
-#origToast.show { opacity: 1; }
+#origToast.show { opacity:1; }
 
-/* ── BOTTOM UI ── */
+/* ── BOTTOM UI — sits OVER the stage (no layout shift) ── */
 #bottomUI {
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  z-index: 60;
-  display: flex;
-  flex-direction: column;
+  position:fixed; left:0; right:0; bottom:0;
+  z-index:70;
+  display:flex; flex-direction:column;
+  pointer-events:none; /* children re-enable */
 }
 
-/* ── ADJUST PANEL ── */
-#adjPanel {
-  height: 0;
-  overflow: hidden;
-  transition: height 0.38s cubic-bezier(0.32,0.72,0,1);
-  /* semi-transparent backdrop */
-  background: rgba(10,10,10,0.72);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid rgba(200,200,200,0.08);
+/* ── SINGLE SLIDER ROW (active option) ── */
+#optRow {
+  pointer-events:auto;
+  height:0; overflow:hidden;
+  transition:height .32s cubic-bezier(.32,.72,0,1);
+  background:rgba(10,10,10,0.72);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  border-top:1px solid rgba(255,255,255,0.07);
+  display:flex; align-items:center;
+  padding:0 24px;
+  gap:16px;
 }
-body.adj-open #adjPanel { height: var(--adj-h); }
+#optRow.open { height:var(--opt-h); }
 
-.adj-scroll {
-  height: var(--adj-h);
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 14px 20px 18px;
-  scrollbar-width: none;
+.opt-label {
+  font-size:9px; letter-spacing:2px; text-transform:uppercase;
+  color:var(--muted); flex-shrink:0; min-width:44px;
 }
-.adj-scroll::-webkit-scrollbar { display: none; }
-
-.adj-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px 28px;
+.opt-val {
+  font-size:10px; letter-spacing:1px; color:var(--gray);
+  flex-shrink:0; min-width:24px; text-align:right;
 }
-
-.slider-row { display: flex; flex-direction: column; gap: 6px; }
-.slider-label {
-  display: flex; justify-content: space-between;
-  font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+#activeSlider {
+  flex:1;
+  -webkit-appearance:none; appearance:none;
+  height:2px; background:rgba(255,255,255,0.15);
+  border-radius:1px; outline:none; cursor:pointer;
 }
-.sl-name { color: var(--muted); }
-.sl-val  { color: var(--gray); min-width: 24px; text-align: right; }
-
-input[type="range"] {
-  -webkit-appearance: none; appearance: none;
-  width: 100%; height: 2px;
-  background: rgba(255,255,255,0.12);
-  border-radius: 1px; outline: none; cursor: pointer;
+#activeSlider::-webkit-slider-thumb {
+  -webkit-appearance:none;
+  width:22px; height:22px; border-radius:50%;
+  background:var(--gray);
+  box-shadow:0 0 8px rgba(0,0,0,0.9);
+  cursor:pointer; transition:transform .1s;
 }
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 14px; height: 14px; border-radius: 50%;
-  background: var(--gray);
-  box-shadow: 0 0 5px rgba(0,0,0,0.8);
-  cursor: pointer; transition: transform 0.1s;
-}
-input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.3); }
-input[type="range"]::-moz-range-thumb {
-  width: 14px; height: 14px; border-radius: 50%; border: none;
-  background: var(--gray); cursor: pointer;
+#activeSlider:active::-webkit-slider-thumb { transform:scale(1.2); }
+#activeSlider::-moz-range-thumb {
+  width:22px; height:22px; border-radius:50%; border:none;
+  background:var(--gray); cursor:pointer;
 }
 
-.adj-reset-row {
-  grid-column: 1 / -1;
-  display: flex; justify-content: center; padding-top: 4px;
+/* ── OPTION ICON ROW ── */
+#optIcons {
+  pointer-events:auto;
+  display:none; /* shown after image load */
+  align-items:center; justify-content:center;
+  gap:0;
+  height:48px;
+  background:rgba(10,10,10,0.72);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  border-top:1px solid rgba(255,255,255,0.07);
+  padding:0 8px;
 }
-.btn-reset {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  font-family: 'DM Mono', monospace;
-  font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
-  padding: 6px 18px; border-radius: 20px; cursor: pointer;
-  transition: all 0.15s;
+
+.opt-icon-btn {
+  flex:1;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:3px; height:100%; cursor:pointer;
+  border:none; background:none;
+  transition:opacity .15s;
+  padding:0 4px;
 }
-.btn-reset:hover { border-color: var(--gray); color: var(--gray); }
+.opt-icon-btn:active { opacity:.6; }
+
+.opt-icon-svg {
+  width:18px; height:18px;
+  opacity:.45;
+  transition:opacity .15s;
+}
+.opt-icon-btn.active .opt-icon-svg { opacity:1; }
+
+.opt-icon-label {
+  font-family:'DM Mono',monospace;
+  font-size:7.5px; letter-spacing:1px; text-transform:uppercase;
+  color:var(--muted); transition:color .15s;
+}
+.opt-icon-btn.active .opt-icon-label { color:var(--gray); }
 
 /* ── FILTER STRIP ── */
 #filterStrip {
-  flex-shrink: 0;
-  height: var(--strip-h);
-  background: linear-gradient(to top, rgba(8,8,8,1) 55%, rgba(8,8,8,0.88));
-  border-top: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  padding: 8px 0 10px;
+  pointer-events:auto;
+  flex-shrink:0; height:var(--strip-h);
+  background:rgba(8,8,8,0.88);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  border-top:1px solid var(--border);
+  display:flex; flex-direction:column;
+  padding:8px 0 10px;
 }
-
 .strip-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 18px 6px;
-  flex-shrink: 0;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px 6px; flex-shrink:0;
 }
-.strip-title {
-  font-size: 8px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted);
-}
-#btnAdjToggle {
-  display: none;
-  align-items: center;
-  gap: 5px;
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  font-family: 'DM Mono', monospace;
-  font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase;
-  padding: 4px 10px; border-radius: 12px; cursor: pointer;
-  transition: all 0.15s;
-}
-body.adj-open #btnAdjToggle { border-color: var(--gray); color: var(--gray); }
-.adj-arrow { font-size:10px; display:inline-block; transition: transform 0.35s; }
-body.adj-open .adj-arrow { transform: rotate(180deg); }
+.strip-title { font-size:8px; letter-spacing:2.5px; text-transform:uppercase; color:var(--muted); }
 
-/* Scrollable chip row */
 #filterScroll {
-  display: flex;
-  gap: 10px;
-  padding: 0 18px;
-  overflow-x: auto; overflow-y: hidden;
-  flex: 1; align-items: center;
-  scrollbar-width: none;
+  display:flex; gap:10px; padding:0 18px;
+  overflow-x:auto; overflow-y:hidden;
+  flex:1; align-items:center; scrollbar-width:none;
 }
-#filterScroll::-webkit-scrollbar { display: none; }
+#filterScroll::-webkit-scrollbar { display:none; }
 
 .chip {
-  flex-shrink: 0;
-  display: flex; flex-direction: column;
-  align-items: center; gap: 5px;
-  cursor: pointer; user-select: none;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.35s, transform 0.35s, border-color 0.15s;
+  flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:5px;
+  cursor:pointer; user-select:none;
+  opacity:0; transform:translateY(20px);
+  transition:opacity .35s, transform .35s;
 }
-.chip.visible { opacity: 1; transform: translateY(0); }
+.chip.visible { opacity:1; transform:translateY(0); }
 
 .chip-thumb {
-  width: 54px; height: 40px;
-  border-radius: 5px;
-  border: 2px solid transparent;
-  overflow: hidden;
-  transition: border-color 0.15s, transform 0.15s;
-  background: #1a1a1a; /* fallback */
-  position: relative;
+  width:54px; height:40px; border-radius:5px;
+  border:2px solid transparent; overflow:hidden;
+  transition:border-color .15s, transform .15s;
+  background:#1a1a1a;
 }
-/* actual thumbnail canvas inside */
-.chip-thumb canvas {
-  width: 100%; height: 100%;
-  display: block;
-  object-fit: cover;
-}
-.chip.active .chip-thumb {
-  border-color: var(--gray);
-  transform: scale(1.08);
-}
-.chip-code {
-  font-size: 9px; letter-spacing: 1px; color: var(--muted);
-  transition: color 0.15s;
-}
-.chip.active .chip-code { color: var(--text); }
+.chip-thumb canvas { width:100%; height:100%; display:block; }
+.chip.active .chip-thumb { border-color:var(--gray); transform:scale(1.08); }
+.chip-code { font-size:9px; letter-spacing:1px; color:var(--muted); transition:color .15s; }
+.chip.active .chip-code { color:var(--text); }
 
-#fileInput { display: none; }
+#fileInput { display:none; }
 </style>
 </head>
 <body>
 
-<!-- Top bar -->
 <div id="topbar">
   <button id="btnOpen">‹</button>
   <button id="btnSave">저장</button>
-  <div id="hudCode">F1</div>
+  <div id="hudCode">—</div>
 </div>
 
-<!-- Stage -->
 <div id="stage">
-  <div id="uploadPrompt">
-    <div class="up-ring">+</div>
-    <div class="up-text">사진을 클릭하거나 드래그</div>
+  <div id="canvasWrap">
+    <div id="uploadPrompt">
+      <div class="up-ring">+</div>
+      <div class="up-text">사진을 클릭하거나 드래그</div>
+    </div>
+    <canvas id="previewCanvas"></canvas>
   </div>
-  <canvas id="previewCanvas"></canvas>
 </div>
 
 <div id="origToast">ORIGINAL</div>
 
-<!-- Bottom UI -->
 <div id="bottomUI">
 
-  <!-- Adjust panel -->
-  <div id="adjPanel">
-    <div class="adj-scroll">
-      <div class="adj-grid">
-        <div class="slider-row">
-          <div class="slider-label"><span class="sl-name">노출</span><span class="sl-val" id="vExp">0</span></div>
-          <input type="range" id="sExp" min="-50" max="50" value="0">
-        </div>
-        <div class="slider-row">
-          <div class="slider-label"><span class="sl-name">채도</span><span class="sl-val" id="vSat">0</span></div>
-          <input type="range" id="sSat" min="-100" max="100" value="0">
-        </div>
-        <div class="slider-row">
-          <div class="slider-label"><span class="sl-name">대비</span><span class="sl-val" id="vCon">0</span></div>
-          <input type="range" id="sCon" min="-50" max="50" value="0">
-        </div>
-        <div class="slider-row">
-          <div class="slider-label"><span class="sl-name">하이라이트</span><span class="sl-val" id="vHi">0</span></div>
-          <input type="range" id="sHi" min="-50" max="50" value="0">
-        </div>
-        <div class="slider-row">
-          <div class="slider-label"><span class="sl-name">섀도우</span><span class="sl-val" id="vSh">0</span></div>
-          <input type="range" id="sSh" min="-50" max="50" value="0">
-        </div>
-        <div class="slider-row">
-          <div class="slider-label"><span class="sl-name">따뜻함</span><span class="sl-val" id="vWarm">0</span></div>
-          <input type="range" id="sWarm" min="-50" max="50" value="0">
-        </div>
-        <div class="slider-row">
-          <div class="slider-label"><span class="sl-name">그레인</span><span class="sl-val" id="vGrain">0</span></div>
-          <input type="range" id="sGrain" min="0" max="60" value="0">
-        </div>
-        <div class="slider-row">
-          <div class="slider-label"><span class="sl-name">비네팅</span><span class="sl-val" id="vVig">0</span></div>
-          <input type="range" id="sVig" min="0" max="100" value="0">
-        </div>
-        <div class="adj-reset-row">
-          <button class="btn-reset" id="btnReset">초기화</button>
-        </div>
-      </div>
-    </div>
+  <!-- Single active slider -->
+  <div id="optRow">
+    <span class="opt-label" id="optLabel">노출</span>
+    <input type="range" id="activeSlider" min="-50" max="50" value="0">
+    <span class="opt-val" id="optVal">0</span>
+  </div>
+
+  <!-- Option icon row -->
+  <div id="optIcons">
+    <!-- icons injected by JS -->
   </div>
 
   <!-- Filter strip -->
   <div id="filterStrip">
     <div class="strip-header">
       <span class="strip-title">사진 필터</span>
-      <button id="btnAdjToggle">보정 <span class="adj-arrow">↑</span></button>
     </div>
     <div id="filterScroll"></div>
   </div>
@@ -380,6 +277,31 @@ body.adj-open .adj-arrow { transform: rotate(180deg); }
 <input type="file" id="fileInput" accept="image/*">
 
 <script>
+// ── Option definitions ──
+const OPTIONS = [
+  { key:'exp',   label:'노출',   min:-50,  max:50,  val:0,
+    icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/></svg>` },
+  { key:'sat',   label:'채도',   min:-100, max:100, val:0,
+    icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 6a6 6 0 0 1 0 12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>` },
+  { key:'con',   label:'대비',   min:-50,  max:50,  val:0,
+    icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" opacity=".5"/><path d="M12 3a9 9 0 0 0 0 18V3z" fill="currentColor" stroke="none" opacity=".9"/></svg>` },
+  { key:'hi',    label:'밝은부분', min:-50, max:50,  val:0,
+    icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l2.5 5 5.5.8-4 3.9.95 5.5L12 15.5l-4.95 2.7.95-5.5L4 8.8l5.5-.8z"/></svg>` },
+  { key:'sh',    label:'어두운부분', min:-50, max:50, val:0,
+    icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>` },
+  { key:'warm',  label:'따뜻함',  min:-50,  max:50,  val:0,
+    icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/><circle cx="12" cy="12" r="5"/></svg>` },
+  { key:'grain', label:'그레인',  min:0,    max:60,  val:0,
+    icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="8" r="1.2" fill="currentColor"/><circle cx="13" cy="5" r="1" fill="currentColor"/><circle cx="18" cy="9" r="1.2" fill="currentColor"/><circle cx="5" cy="14" r="1" fill="currentColor"/><circle cx="10" cy="17" r="1.2" fill="currentColor"/><circle cx="16" cy="15" r="1" fill="currentColor"/><circle cx="20" cy="18" r="1.2" fill="currentColor"/><circle cx="4" cy="19" r="0.8" fill="currentColor"/></svg>` },
+  { key:'vig',   label:'비네팅',  min:0,    max:100, val:0,
+    icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2"/><ellipse cx="12" cy="12" rx="6" ry="6" fill="none" stroke="currentColor" stroke-width="4" stroke-opacity=".25"/></svg>` },
+];
+
+let adj = {};
+OPTIONS.forEach(o => { adj[o.key] = 0; });
+
+let activeOptKey = null;
+
 // ── Film data ──
 const FILMS = [
   { id:'normal',         code:'Normal',     css:{contrast:1.00, saturate:1.00}, grain:0,  vignette:0  },
@@ -399,36 +321,86 @@ let currentFilm = FILMS[0];
 let sourceImage  = null;
 let showOrig     = false;
 let origTimer    = null;
-let adj = { exp:0, sat:0, con:0, hi:0, sh:0, warm:0, grain:0, vig:0 };
 
-// ── Core pixel-level film render (reusable for thumbnails too) ──
-function applyFilm(srcCanvas, film, adjOverride) {
-  const a = adjOverride || { exp:0, sat:0, con:0, hi:0, sh:0, warm:0, grain:0, vig:0 };
+// ── Build option icon row ──
+const optIcons  = document.getElementById('optIcons');
+const optRow    = document.getElementById('optRow');
+const optLabel  = document.getElementById('optLabel');
+const optVal    = document.getElementById('optVal');
+const activeSlider = document.getElementById('activeSlider');
+const iconBtns  = [];
+
+OPTIONS.forEach(opt => {
+  const btn = document.createElement('button');
+  btn.className = 'opt-icon-btn';
+  btn.innerHTML = `
+    <svg class="opt-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">${opt.icon.match(/<svg[^>]*>(.*)<\/svg>/s)?.[1] || ''}</svg>
+    <span class="opt-icon-label">${opt.label}</span>`;
+
+  // fix: use full svg string
+  btn.innerHTML = `${opt.icon.replace('<svg ', '<svg class="opt-icon-svg" ')}<span class="opt-icon-label">${opt.label}</span>`;
+
+  btn.addEventListener('click', () => {
+    if (activeOptKey === opt.key) {
+      // toggle off
+      activeOptKey = null;
+      iconBtns.forEach(b => b.classList.remove('active'));
+      optRow.classList.remove('open');
+    } else {
+      activeOptKey = opt.key;
+      iconBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      // update slider
+      optLabel.textContent = opt.label;
+      activeSlider.min   = opt.min;
+      activeSlider.max   = opt.max;
+      activeSlider.value = adj[opt.key];
+      optVal.textContent = adj[opt.key];
+      optRow.classList.add('open');
+    }
+  });
+
+  optIcons.appendChild(btn);
+  iconBtns.push(btn);
+});
+
+// Slider change
+activeSlider.addEventListener('input', () => {
+  if (!activeOptKey) return;
+  const v = parseFloat(activeSlider.value);
+  adj[activeOptKey] = v;
+  optVal.textContent = v;
+  // update OPTIONS val reference too
+  const opt = OPTIONS.find(o => o.key === activeOptKey);
+  if (opt) opt.val = v;
+  if (sourceImage) renderImage();
+});
+
+// ── Film pixel renderer ──
+function applyFilm(srcCanvas, film, a) {
   const w = srcCanvas.width, h = srcCanvas.height;
   const ctx2 = srcCanvas.getContext('2d');
-
-  const id = ctx2.getImageData(0,0,w,h);
-  const d  = id.data;
+  const id = ctx2.getImageData(0,0,w,h), d = id.data;
 
   const expF    = 1 + a.exp  / 100;
   const satMult = (film.css.saturate ?? 1) + a.sat / 100;
   const conMult = (film.css.contrast ?? 1) + a.con / 100;
-  const hiAdj   = a.hi   / 200;
-  const shAdj   = a.sh   / 200;
+  const hiAdj   = a.hi  / 200;
+  const shAdj   = a.sh  / 200;
   const warmR   = a.warm > 0 ?  a.warm / 300 : 0;
   const warmB   = a.warm < 0 ? -a.warm / 300 : 0;
 
   for (let i = 0; i < d.length; i += 4) {
-    let r = d[i]/255, g = d[i+1]/255, b = d[i+2]/255;
+    let r=d[i]/255, g=d[i+1]/255, b=d[i+2]/255;
 
-    switch (film.id) {
+    switch(film.id){
       case 'velvia':        r=Math.pow(r,.85); g=Math.pow(g,.88); b=Math.pow(b,1.1); break;
       case 'classic_chrome':{ const l=.299*r+.587*g+.114*b; r+=.04*(1-l); g+=.02*(1-l); b+=.03*l; break; }
       case 'classic_neg':   { const l=.299*r+.587*g+.114*b; r+=.06*(1-l); g+=.02*(1-l); break; }
       case 'eterna':        r=r*.85+.05; g=g*.85+.05; b=b*.85+.05; break;
       case 'eterna_bleach': { const l=.299*r+.587*g+.114*b; r=r*.4+l*.6; g=g*.4+l*.6; b=b*.4+l*.6; break; }
       case 'acros':         { const l=Math.pow(.299*r+.587*g+.114*b,.92); r=l;g=l;b=l; break; }
-      case 'acros_r':       { const l=Math.pow(.55*r+.30*g+.15*b,.9);    r=l;g=l;b=l; break; }
+      case 'acros_r':       { const l=Math.pow(.55*r+.30*g+.15*b,.9); r=l;g=l;b=l; break; }
       case 'pro400h':       r=Math.pow(r,.95)*.95+.04; g=Math.pow(g,.95)*.96+.03; b=Math.pow(b,.92)*.92+.05; break;
       case 'nostalgic_neg': { const l=.299*r+.587*g+.114*b; r+=.08*l; b=b-.04*l+.04*(1-l); break; }
     }
@@ -436,11 +408,11 @@ function applyFilm(srcCanvas, film, adjOverride) {
     r*=expF; g*=expF; b*=expF;
 
     const lum=.299*r+.587*g+.114*b;
-    if (hiAdj!==0){ const hi=Math.max(0,lum-.5)*2; r+=hiAdj*hi; g+=hiAdj*hi; b+=hiAdj*hi; }
-    if (shAdj!==0){ const sh=Math.max(0,.5-lum)*2; r+=shAdj*sh; g+=shAdj*sh; b+=shAdj*sh; }
+    if(hiAdj){ const hi=Math.max(0,lum-.5)*2; r+=hiAdj*hi; g+=hiAdj*hi; b+=hiAdj*hi; }
+    if(shAdj){ const sh=Math.max(0,.5-lum)*2; r+=shAdj*sh; g+=shAdj*sh; b+=shAdj*sh; }
     r+=warmR; b+=warmB;
 
-    if (satMult!==1){ const l=.299*r+.587*g+.114*b; r=l+(r-l)*satMult; g=l+(g-l)*satMult; b=l+(b-l)*satMult; }
+    if(satMult!==1){ const l=.299*r+.587*g+.114*b; r=l+(r-l)*satMult; g=l+(g-l)*satMult; b=l+(b-l)*satMult; }
     r=(r-.5)*conMult+.5; g=(g-.5)*conMult+.5; b=(b-.5)*conMult+.5;
 
     d[i]  =Math.max(0,Math.min(255,r*255));
@@ -449,7 +421,7 @@ function applyFilm(srcCanvas, film, adjOverride) {
   }
   ctx2.putImageData(id,0,0);
 
-  if (film.overlay){
+  if(film.overlay){
     ctx2.globalCompositeOperation=film.overlay.blend;
     ctx2.globalAlpha=film.overlay.opacity;
     ctx2.fillStyle=film.overlay.color;
@@ -459,7 +431,7 @@ function applyFilm(srcCanvas, film, adjOverride) {
   }
 
   const vigAmt=(film.vignette||0)+a.vig;
-  if (vigAmt>0){
+  if(vigAmt>0){
     const vg=ctx2.createRadialGradient(w/2,h/2,Math.min(w,h)*.3,w/2,h/2,Math.max(w,h)*.8);
     vg.addColorStop(0,'rgba(0,0,0,0)');
     vg.addColorStop(1,`rgba(0,0,0,${vigAmt/200})`);
@@ -467,9 +439,9 @@ function applyFilm(srcCanvas, film, adjOverride) {
   }
 
   const grainAmt=(film.grain||0)+a.grain;
-  if (grainAmt>0){
+  if(grainAmt>0){
     const gid=ctx2.getImageData(0,0,w,h), gd=gid.data;
-    for (let i=0;i<gd.length;i+=4){
+    for(let i=0;i<gd.length;i+=4){
       const n=(Math.random()-.5)*grainAmt*2;
       gd[i]  =Math.max(0,Math.min(255,gd[i]+n));
       gd[i+1]=Math.max(0,Math.min(255,gd[i+1]+n));
@@ -479,95 +451,45 @@ function applyFilm(srcCanvas, film, adjOverride) {
   }
 }
 
-// ── Build filter chips (empty at first) ──
+// ── Build filter chips ──
 const filterScroll = document.getElementById('filterScroll');
 const chipEls = [];
 
 FILMS.forEach((film, i) => {
   const chip = document.createElement('div');
-  chip.className = 'chip' + (i === 0 ? ' active' : '');
-
+  chip.className = 'chip' + (i===0?' active':'');
   const thumbWrap = document.createElement('div');
   thumbWrap.className = 'chip-thumb';
-
-  const thumbCanvas = document.createElement('canvas');
-  thumbWrap.appendChild(thumbCanvas);
-
-  const label = document.createElement('div');
-  label.className = 'chip-code';
-  label.textContent = film.code;
-
+  const tc = document.createElement('canvas');
+  thumbWrap.appendChild(tc);
+  const lbl = document.createElement('div');
+  lbl.className = 'chip-code';
+  lbl.textContent = film.code;
   chip.appendChild(thumbWrap);
-  chip.appendChild(label);
-
+  chip.appendChild(lbl);
   chip.addEventListener('click', () => {
-    chipEls.forEach(c => c.classList.remove('active'));
+    chipEls.forEach(c=>c.classList.remove('active'));
     chip.classList.add('active');
     currentFilm = film;
     document.getElementById('hudCode').textContent = film.code;
-    if (sourceImage) renderImage();
-    openAdj();
+    if(sourceImage) renderImage();
   });
-
   filterScroll.appendChild(chip);
   chipEls.push(chip);
-  film._thumbCanvas = thumbCanvas;
+  film._tc = tc;
 });
 
-// ── Generate thumbnails from loaded image ──
 function generateThumbnails() {
   const img = sourceImage;
-  const TW = 108, TH = 80; // 2x for retina
-
+  const TW=108, TH=80;
   FILMS.forEach((film, i) => {
-    const tc = film._thumbCanvas;
-    tc.width  = TW;
-    tc.height = TH;
-    const tctx = tc.getContext('2d');
-    // Draw source scaled to thumb
-    tctx.drawImage(img, 0, 0, TW, TH);
-    // Apply film
-    applyFilm(tc, film, { exp:0, sat:0, con:0, hi:0, sh:0, warm:0, grain:0, vig:0 });
-
-    // Animate chip in with stagger
-    setTimeout(() => {
-      chipEls[i].classList.add('visible');
-    }, i * 50);
+    const tc = film._tc;
+    tc.width=TW; tc.height=TH;
+    tc.getContext('2d').drawImage(img,0,0,TW,TH);
+    applyFilm(tc, film, {exp:0,sat:0,con:0,hi:0,sh:0,warm:0,grain:0,vig:0});
+    setTimeout(()=>{ chipEls[i].classList.add('visible'); }, i*45);
   });
 }
-
-// ── Adjust panel ──
-function openAdj()   { document.body.classList.add('adj-open'); }
-function closeAdj()  { document.body.classList.remove('adj-open'); }
-function toggleAdj() { document.body.classList.toggle('adj-open'); }
-
-document.getElementById('btnAdjToggle').addEventListener('click', toggleAdj);
-
-// ── Sliders ──
-const sliders = [
-  {el:'sExp',key:'exp',vEl:'vExp'},{el:'sSat',key:'sat',vEl:'vSat'},
-  {el:'sCon',key:'con',vEl:'vCon'},{el:'sHi', key:'hi', vEl:'vHi'},
-  {el:'sSh', key:'sh', vEl:'vSh'},{el:'sWarm',key:'warm',vEl:'vWarm'},
-  {el:'sGrain',key:'grain',vEl:'vGrain'},{el:'sVig',key:'vig',vEl:'vVig'},
-];
-sliders.forEach(({el,key,vEl}) => {
-  const input = document.getElementById(el);
-  const disp  = document.getElementById(vEl);
-  input.addEventListener('input', () => {
-    adj[key] = parseFloat(input.value);
-    disp.textContent = input.value;
-    if (sourceImage) renderImage();
-  });
-});
-
-document.getElementById('btnReset').addEventListener('click', () => {
-  sliders.forEach(({el,key,vEl}) => {
-    document.getElementById(el).value = 0;
-    document.getElementById(vEl).textContent = 0;
-    adj[key] = 0;
-  });
-  if (sourceImage) renderImage();
-});
 
 // ── Upload ──
 const uploadPrompt = document.getElementById('uploadPrompt');
@@ -576,14 +498,22 @@ const ctx          = canvas.getContext('2d');
 const fileInput    = document.getElementById('fileInput');
 const btnOpen      = document.getElementById('btnOpen');
 const btnSave      = document.getElementById('btnSave');
-const btnAdjToggle = document.getElementById('btnAdjToggle');
 const stage        = document.getElementById('stage');
+const canvasWrap   = document.getElementById('canvasWrap');
 
-btnOpen.addEventListener('click', () => fileInput.click());
-uploadPrompt.addEventListener('click', () => fileInput.click());
-stage.addEventListener('dragover', e => e.preventDefault());
-stage.addEventListener('drop', e => { e.preventDefault(); const f=e.dataTransfer.files[0]; if(f) loadImage(f); });
-fileInput.addEventListener('change', e => { if(e.target.files[0]) loadImage(e.target.files[0]); });
+btnOpen.addEventListener('click', ()=>fileInput.click());
+uploadPrompt.addEventListener('click', ()=>fileInput.click());
+stage.addEventListener('dragover', e=>e.preventDefault());
+stage.addEventListener('drop', e=>{ e.preventDefault(); const f=e.dataTransfer.files[0]; if(f)loadImage(f); });
+fileInput.addEventListener('change', e=>{ if(e.target.files[0])loadImage(e.target.files[0]); });
+
+function resetAdj() {
+  OPTIONS.forEach(o=>{ o.val=0; adj[o.key]=0; });
+  activeSlider.value=0; optVal.textContent=0;
+  activeOptKey=null;
+  iconBtns.forEach(b=>b.classList.remove('active'));
+  optRow.classList.remove('open');
+}
 
 function loadImage(file) {
   const reader = new FileReader();
@@ -593,23 +523,16 @@ function loadImage(file) {
       sourceImage = img;
       uploadPrompt.style.display = 'none';
       canvas.style.display = 'block';
-      btnAdjToggle.style.display = 'flex';
+      optIcons.style.display = 'flex';
 
-      // Reset to Normal filter
+      // Reset
       currentFilm = FILMS[0];
       document.getElementById('hudCode').textContent = FILMS[0].code;
-      chipEls.forEach(c => c.classList.remove('active'));
+      chipEls.forEach(c=>c.classList.remove('active'));
       chipEls[0].classList.add('active');
-
-      // Reset sliders
-      sliders.forEach(({el,key,vEl}) => {
-        document.getElementById(el).value = 0;
-        document.getElementById(vEl).textContent = 0;
-        adj[key] = 0;
-      });
-
-      // Reset chip visibility for re-animation
-      chipEls.forEach(c => c.classList.remove('visible'));
+      resetAdj();
+      resetZoom();
+      chipEls.forEach(c=>c.classList.remove('visible'));
 
       renderImage();
       generateThumbnails();
@@ -619,44 +542,149 @@ function loadImage(file) {
   reader.readAsDataURL(file);
 }
 
-// ── Tap: show original ──
+// ── Main render ──
+function renderImage() {
+  if(showOrig || !sourceImage) return;
+  const img=sourceImage, maxW=2400;
+  let w=img.width, h=img.height;
+  if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
+  canvas.width=w; canvas.height=h;
+  ctx.drawImage(img,0,0,w,h);
+  applyFilm(canvas, currentFilm, adj);
+}
+
+// ── Tap to show original ──
 const origToast = document.getElementById('origToast');
-canvas.addEventListener('click', () => {
-  if (!sourceImage || showOrig) return;
-  showOrig = true;
+let tapTimeout = null;
+
+stage.addEventListener('click', e => {
+  // Only single-tap on canvas area, not on UI
+  if(!sourceImage) return;
+  if(e.target.closest('#bottomUI')) return;
+  if(showOrig) return;
+  showOrig=true;
   origToast.classList.add('show');
-  const img = sourceImage;
-  const maxW = 2400;
-  let w = img.width, h = img.height;
-  if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
-  canvas.width = w; canvas.height = h;
-  ctx.drawImage(img, 0, 0, w, h);
-  if (origTimer) clearTimeout(origTimer);
-  origTimer = setTimeout(() => {
-    showOrig = false;
+  const img=sourceImage, maxW=2400;
+  let w=img.width, h=img.height;
+  if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
+  canvas.width=w; canvas.height=h;
+  ctx.drawImage(img,0,0,w,h);
+  if(origTimer)clearTimeout(origTimer);
+  origTimer=setTimeout(()=>{
+    showOrig=false;
     origToast.classList.remove('show');
     renderImage();
   }, 3000);
 });
 
-// ── Main render ──
-function renderImage() {
-  if (showOrig || !sourceImage) return;
-  const img = sourceImage;
-  const maxW = 2400;
-  let w = img.width, h = img.height;
-  if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
-  canvas.width = w; canvas.height = h;
-  ctx.drawImage(img, 0, 0, w, h);
-  applyFilm(canvas, currentFilm, adj);
+// ── Pinch zoom on canvasWrap ──
+let scale    = 1;
+let minScale = 1;
+let maxScale = 5;
+let originX  = 0, originY = 0;
+let translateX = 0, translateY = 0;
+
+// Touch state
+let touches       = {};
+let initDist      = 0;
+let initScale     = 1;
+let initTx        = 0, initTy = 0;
+let panStartX     = 0, panStartY = 0;
+let isPinching    = false;
+
+function resetZoom() {
+  scale=1; translateX=0; translateY=0;
+  applyTransform();
 }
 
+function applyTransform() {
+  canvasWrap.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+}
+
+function getDist(t1, t2) {
+  const dx = t1.clientX - t2.clientX;
+  const dy = t1.clientY - t2.clientY;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+
+function getMidpoint(t1, t2) {
+  return { x:(t1.clientX+t2.clientX)/2, y:(t1.clientY+t2.clientY)/2 };
+}
+
+stage.addEventListener('touchstart', e => {
+  if(e.target.closest('#bottomUI')) return;
+  Array.from(e.changedTouches).forEach(t=>{ touches[t.identifier]=t; });
+  const tArr = Object.values(touches);
+
+  if(tArr.length === 2) {
+    isPinching = true;
+    initDist   = getDist(tArr[0], tArr[1]);
+    initScale  = scale;
+    initTx     = translateX;
+    initTy     = translateY;
+    const mid  = getMidpoint(tArr[0], tArr[1]);
+    originX    = mid.x;
+    originY    = mid.y;
+    e.preventDefault();
+  } else if(tArr.length === 1) {
+    isPinching = false;
+    panStartX  = tArr[0].clientX - translateX;
+    panStartY  = tArr[0].clientY - translateY;
+  }
+}, { passive:false });
+
+stage.addEventListener('touchmove', e => {
+  if(e.target.closest('#bottomUI')) return;
+  Array.from(e.changedTouches).forEach(t=>{ touches[t.identifier]=t; });
+  const tArr = Object.values(touches);
+
+  if(tArr.length === 2 && isPinching) {
+    e.preventDefault();
+    const newDist = getDist(tArr[0], tArr[1]);
+    let newScale  = initScale * (newDist / initDist);
+    newScale      = Math.max(minScale, Math.min(maxScale, newScale));
+
+    const mid     = getMidpoint(tArr[0], tArr[1]);
+    const dx      = mid.x - originX;
+    const dy      = mid.y - originY;
+    translateX    = initTx + dx;
+    translateY    = initTy + dy;
+    scale         = newScale;
+    applyTransform();
+  } else if(tArr.length === 1 && !isPinching && scale > 1) {
+    e.preventDefault();
+    translateX = tArr[0].clientX - panStartX;
+    translateY = tArr[0].clientY - panStartY;
+    applyTransform();
+  }
+}, { passive:false });
+
+stage.addEventListener('touchend', e => {
+  if(e.target.closest('#bottomUI')) return;
+  Array.from(e.changedTouches).forEach(t=>{ delete touches[t.identifier]; });
+  const tArr = Object.values(touches);
+  if(tArr.length < 2) isPinching = false;
+  // Snap back if over-zoomed out
+  if(scale < minScale) { scale=minScale; translateX=0; translateY=0; applyTransform(); }
+}, { passive:true });
+
+// Double-tap to reset zoom
+let lastTap = 0;
+stage.addEventListener('touchend', e => {
+  if(e.target.closest('#bottomUI')) return;
+  const now = Date.now();
+  if(now - lastTap < 300) {
+    resetZoom();
+    lastTap = 0;
+  } else { lastTap = now; }
+}, { passive:true });
+
 // ── Download ──
-btnSave.addEventListener('click', () => {
-  if (!sourceImage) return;
-  const a = document.createElement('a');
-  a.download = `fujisim_${currentFilm.code}.jpg`;
-  a.href = canvas.toDataURL('image/jpeg', .95);
+btnSave.addEventListener('click', ()=>{
+  if(!sourceImage) return;
+  const a=document.createElement('a');
+  a.download=`fujisim_${currentFilm.code}.jpg`;
+  a.href=canvas.toDataURL('image/jpeg',.95);
   a.click();
 });
 </script>
