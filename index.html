@@ -21,7 +21,7 @@
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:'DM Mono',monospace; color:var(--text); }
 
-/* ── TOP BAR ── */
+/* topbar hidden until image loaded */
 #topbar {
   position: fixed;
   top:0; left:0; right:0; height:var(--topbar-h);
@@ -29,6 +29,13 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
   padding:0 18px;
   z-index:80;
   background:linear-gradient(to bottom,rgba(10,10,10,0.96),transparent);
+  opacity:0;
+  pointer-events:none;
+  transition: opacity 0.4s ease;
+}
+#topbar.visible {
+  opacity:1;
+  pointer-events:auto;
 }
 #btnOpen {
   width:36px; height:36px;
@@ -46,18 +53,21 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
 #btnSave:hover { border-color:var(--gray); color:var(--text); }
 #hudCode { font-size:10px; letter-spacing:2.5px; color:var(--gray); min-width:60px; text-align:right; }
 
-/* ── STAGE — always fills full screen, never shrinks ── */
+/* stage: no padding when no image (upload screen uses full screen) */
 #stage {
   position:fixed;
-  top:var(--topbar-h); left:0; right:0; bottom:0;
+  top:0; left:0; right:0; bottom:0;
   display:flex; align-items:center; justify-content:center;
   background:#000;
   overflow:hidden;
   touch-action:none;
-  /* bottom padding = bottomUI height so image centers in visible area */
-  padding-bottom:calc(var(--strip-h) + var(--opt-h) + 48px);
+  transition: top 0.4s ease, padding-bottom 0.5s cubic-bezier(0.32,0.72,0,1), padding-top 0.4s ease;
+}
+/* after image loaded, make room for topbar and bottomUI */
+#stage.has-image {
+  top: var(--topbar-h);
+  padding-bottom: calc(var(--strip-h) + var(--opt-h) + 48px);
   padding-top: 8px;
-  transition: padding-bottom 0.38s cubic-bezier(.32,.72,0,1);
 }
 
 /* Canvas wrapper — transforms applied here for pinch/zoom */
@@ -106,6 +116,11 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
   z-index:70;
   display:flex; flex-direction:column;
   pointer-events:none; /* children re-enable */
+  transform: translateY(100%);
+  transition: transform 0.5s cubic-bezier(0.32,0.72,0,1);
+}
+#bottomUI.visible {
+  transform: translateY(0);
 }
 
 /* ── SINGLE SLIDER ROW (active option) ── */
@@ -203,13 +218,8 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
   -webkit-backdrop-filter:blur(18px);
   border-top:1px solid var(--border);
   display:flex; flex-direction:column;
-  padding:8px 0 10px;
+  padding:12px 0;
 }
-.strip-header {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:0 18px 6px; flex-shrink:0;
-}
-.strip-title { font-size:8px; letter-spacing:2.5px; text-transform:uppercase; color:var(--muted); }
 
 #filterScroll {
   display:flex; gap:12px; padding:0 18px;
@@ -252,7 +262,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
   <div id="canvasWrap">
     <div id="uploadPrompt">
       <div class="up-ring">+</div>
-      <div class="up-text">사진을 클릭하거나 드래그</div>
+      <div class="up-text">사진 가져오기</div>
     </div>
     <canvas id="previewCanvas"></canvas>
   </div>
@@ -276,9 +286,6 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
 
   <!-- Filter strip -->
   <div id="filterStrip">
-    <div class="strip-header">
-      <span class="strip-title">사진 필터</span>
-    </div>
     <div id="filterScroll"></div>
   </div>
 
@@ -534,6 +541,11 @@ function loadImage(file) {
       uploadPrompt.style.display = 'none';
       canvas.style.display = 'block';
       optIcons.style.display = 'flex';
+
+      // Show UI with animation
+      document.getElementById('topbar').classList.add('visible');
+      document.getElementById('bottomUI').classList.add('visible');
+      stage.classList.add('has-image');
 
       // Reset
       currentFilm = FILMS[0];
